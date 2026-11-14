@@ -41,6 +41,10 @@ python -m venv .venv
 Si el repositorio se descarga como ZIP (botón «Code → Download ZIP»), descomprimirlo y
 empezar en el paso 2 desde la carpeta descomprimida.
 
+Si en el paso 2 `pip` termina con `OSError: [Errno 2] No such file or directory` y una ruta
+muy larga, Windows alcanzó su límite de 260 caracteres por ruta: clonar el repositorio en
+una carpeta de ruta corta (por ejemplo `C:\Proyectos`) y repetir el paso 2.
+
 ## Pruebas
 
 ```powershell
