@@ -1,0 +1,25 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Archivos generados por Python
+__pycache__/
+*.py[cod]
+
+# HTML intermedio que crea herramientas/generar_informe_pdf.py
+*.html
+
+# Credenciales y configuración local
+.env
+.streamlit/secrets.toml
+
+# Archivos del sistema y de editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Sesiones y configuración local de Claude Code
+.claude/

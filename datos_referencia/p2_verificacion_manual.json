@@ -1,0 +1,50 @@
+{
+  "nombre": "Verificacion manual de distribucion",
+  "vertices": [
+    "O",
+    "A",
+    "B",
+    "C",
+    "T"
+  ],
+  "origen": "O",
+  "destino": "T",
+  "arcos": [
+    {
+      "origen": "O",
+      "destino": "A",
+      "capacidad": 6,
+      "activo": true
+    },
+    {
+      "origen": "O",
+      "destino": "B",
+      "capacidad": 4,
+      "activo": true
+    },
+    {
+      "origen": "A",
+      "destino": "C",
+      "capacidad": 3,
+      "activo": true
+    },
+    {
+      "origen": "A",
+      "destino": "T",
+      "capacidad": 3,
+      "activo": true
+    },
+    {
+      "origen": "B",
+      "destino": "C",
+      "capacidad": 4,
+      "activo": true
+    },
+    {
+      "origen": "C",
+      "destino": "T",
+      "capacidad": 5,
+      "activo": true
+    }
+  ]
+}

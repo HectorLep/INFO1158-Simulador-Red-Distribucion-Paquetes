@@ -1,0 +1,28 @@
+{
+  "nombre": "Caso de verificación manual (5 vértices)",
+  "vertices": ["O", "A", "B", "C", "T"],
+  "origen": "O",
+  "destino": "T",
+  "centros": {
+    "O": "Centro de origen",
+    "A": "Centro intermedio norte",
+    "B": "Centro intermedio sur",
+    "C": "Centro de consolidación",
+    "T": "Centro de destino"
+  },
+  "posiciones": {
+    "O": [0.0, 1.5],
+    "A": [3.0, 3.2],
+    "B": [3.0, -0.2],
+    "C": [5.8, 0.9],
+    "T": [9.0, 2.2]
+  },
+  "arcos": [
+    {"origen": "O", "destino": "A", "capacidad": 6, "activo": true},
+    {"origen": "O", "destino": "B", "capacidad": 4, "activo": true},
+    {"origen": "A", "destino": "C", "capacidad": 3, "activo": true},
+    {"origen": "A", "destino": "T", "capacidad": 3, "activo": true},
+    {"origen": "B", "destino": "C", "capacidad": 4, "activo": true},
+    {"origen": "C", "destino": "T", "capacidad": 5, "activo": true}
+  ]
+}

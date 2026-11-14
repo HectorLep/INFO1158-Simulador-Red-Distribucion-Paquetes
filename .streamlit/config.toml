@@ -1,0 +1,10 @@
+# Apariencia de la aplicación (se lee al ejecutar desde la carpeta raíz del repositorio).
+[theme]
+base = "light"
+primaryColor = "#2a78d6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f4f1"
+textColor = "#0b0b0b"
+
+[browser]
+gatherUsageStats = false

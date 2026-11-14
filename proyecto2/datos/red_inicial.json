@@ -1,0 +1,52 @@
+{
+  "nombre": "Red inicial de distribución",
+  "vertices": ["O", "A", "B", "C", "D", "E", "F", "G", "H", "I", "T"],
+  "origen": "O",
+  "destino": "T",
+  "centros": {
+    "O": "Centro de origen (planta de clasificación)",
+    "A": "Centro regional norte",
+    "B": "Centro regional central",
+    "C": "Centro regional sur",
+    "D": "Centro de distribución 1",
+    "E": "Centro de distribución 2",
+    "F": "Centro de distribución 3",
+    "G": "Centro de distribución 4",
+    "H": "Centro de reparto norte",
+    "I": "Centro de reparto sur",
+    "T": "Centro de destino"
+  },
+  "posiciones": {
+    "O": [0.0, 3.0],
+    "A": [3.0, 5.4],
+    "B": [2.8, 2.9],
+    "C": [3.0, 0.6],
+    "D": [6.0, 6.4],
+    "E": [5.8, 3.8],
+    "F": [6.0, 2.1],
+    "G": [6.2, 0.0],
+    "H": [9.0, 5.5],
+    "I": [8.8, 3.3],
+    "T": [12.0, 2.6]
+  },
+  "arcos": [
+    {"origen": "O", "destino": "A", "capacidad": 8, "activo": true},
+    {"origen": "O", "destino": "B", "capacidad": 7, "activo": true},
+    {"origen": "O", "destino": "C", "capacidad": 5, "activo": true},
+    {"origen": "A", "destino": "D", "capacidad": 6, "activo": true},
+    {"origen": "A", "destino": "E", "capacidad": 3, "activo": true},
+    {"origen": "B", "destino": "E", "capacidad": 6, "activo": true},
+    {"origen": "B", "destino": "F", "capacidad": 4, "activo": true},
+    {"origen": "C", "destino": "F", "capacidad": 5, "activo": true},
+    {"origen": "C", "destino": "G", "capacidad": 3, "activo": true},
+    {"origen": "D", "destino": "H", "capacidad": 6, "activo": true},
+    {"origen": "D", "destino": "I", "capacidad": 2, "activo": true},
+    {"origen": "E", "destino": "H", "capacidad": 5, "activo": true},
+    {"origen": "E", "destino": "I", "capacidad": 4, "activo": true},
+    {"origen": "F", "destino": "I", "capacidad": 6, "activo": true},
+    {"origen": "F", "destino": "T", "capacidad": 2, "activo": true},
+    {"origen": "G", "destino": "T", "capacidad": 3, "activo": true},
+    {"origen": "H", "destino": "T", "capacidad": 8, "activo": true},
+    {"origen": "I", "destino": "T", "capacidad": 5, "activo": true}
+  ]
+}

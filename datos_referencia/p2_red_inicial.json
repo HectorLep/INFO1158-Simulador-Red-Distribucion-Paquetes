@@ -1,0 +1,128 @@
+{
+  "nombre": "Red inicial de distribución",
+  "vertices": [
+    "O",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "T"
+  ],
+  "origen": "O",
+  "destino": "T",
+  "arcos": [
+    {
+      "origen": "O",
+      "destino": "A",
+      "capacidad": 8,
+      "activo": true
+    },
+    {
+      "origen": "O",
+      "destino": "B",
+      "capacidad": 7,
+      "activo": true
+    },
+    {
+      "origen": "O",
+      "destino": "C",
+      "capacidad": 5,
+      "activo": true
+    },
+    {
+      "origen": "A",
+      "destino": "D",
+      "capacidad": 6,
+      "activo": true
+    },
+    {
+      "origen": "A",
+      "destino": "E",
+      "capacidad": 3,
+      "activo": true
+    },
+    {
+      "origen": "B",
+      "destino": "E",
+      "capacidad": 6,
+      "activo": true
+    },
+    {
+      "origen": "B",
+      "destino": "F",
+      "capacidad": 4,
+      "activo": true
+    },
+    {
+      "origen": "C",
+      "destino": "F",
+      "capacidad": 5,
+      "activo": true
+    },
+    {
+      "origen": "C",
+      "destino": "G",
+      "capacidad": 3,
+      "activo": true
+    },
+    {
+      "origen": "D",
+      "destino": "H",
+      "capacidad": 6,
+      "activo": true
+    },
+    {
+      "origen": "D",
+      "destino": "I",
+      "capacidad": 2,
+      "activo": true
+    },
+    {
+      "origen": "E",
+      "destino": "H",
+      "capacidad": 5,
+      "activo": true
+    },
+    {
+      "origen": "E",
+      "destino": "I",
+      "capacidad": 4,
+      "activo": true
+    },
+    {
+      "origen": "F",
+      "destino": "I",
+      "capacidad": 6,
+      "activo": true
+    },
+    {
+      "origen": "F",
+      "destino": "T",
+      "capacidad": 2,
+      "activo": true
+    },
+    {
+      "origen": "G",
+      "destino": "T",
+      "capacidad": 3,
+      "activo": true
+    },
+    {
+      "origen": "H",
+      "destino": "T",
+      "capacidad": 8,
+      "activo": true
+    },
+    {
+      "origen": "I",
+      "destino": "T",
+      "capacidad": 5,
+      "activo": true
+    }
+  ]
+}
