@@ -63,11 +63,14 @@ def buscar_navegador():
 
 
 def convertir(archivo_md):
-    """Genera el PDF de `archivo_md` en su misma carpeta y devuelve su ruta."""
+    """Convierte un Markdown a PDF y devuelve la ruta del archivo generado.
+
+    Si no hay un navegador compatible instalado, conserva el HTML intermedio
+    para que el usuario pueda imprimirlo manualmente.
+    """
     archivo_md = Path(archivo_md).resolve()
     texto = archivo_md.read_text(encoding="utf-8")
     cuerpo = markdown.markdown(texto, extensions=["tables", "fenced_code"])
-    # El título del PDF es el del informe (primera línea "# ..."), no el nombre del archivo.
     titulo = archivo_md.stem
     for linea in texto.splitlines():
         if linea.startswith("# "):
@@ -78,22 +81,31 @@ def convertir(archivo_md):
         f"<title>{titulo}</title><style>{ESTILO}</style></head>"
         f"<body>{cuerpo}</body></html>"
     )
-    # El HTML se guarda junto al .md para que las imágenes relativas (capturas/...) se encuentren.
     archivo_html = archivo_md.with_suffix(".html")
     archivo_pdf = archivo_md.with_suffix(".pdf")
     archivo_html.write_text(html, encoding="utf-8")
 
     navegador = buscar_navegador()
     if navegador is None:
-        print("No se encontró Edge ni Chrome. Abre este archivo en un navegador y usa "
-              f"Imprimir > Guardar como PDF:\n  {archivo_html}")
+        print(
+            "No se encontró Edge ni Chrome. Abre este archivo en un navegador y usa "
+            f"Imprimir > Guardar como PDF:\n  {archivo_html}"
+        )
         return None
     subprocess.run(
-        [navegador, "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
-         f"--print-to-pdf={archivo_pdf}", archivo_html.as_uri()],
-        check=True, capture_output=True, timeout=120,
+        [
+            navegador,
+            "--headless=new",
+            "--disable-gpu",
+            "--no-pdf-header-footer",
+            f"--print-to-pdf={archivo_pdf}",
+            archivo_html.as_uri(),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=120,
     )
-    archivo_html.unlink()                     # el HTML intermedio ya no hace falta
+    archivo_html.unlink()
     return archivo_pdf
 
 

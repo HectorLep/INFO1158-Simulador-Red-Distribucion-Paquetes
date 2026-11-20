@@ -14,17 +14,17 @@ sys.path.insert(0, str(CARPETA_PROYECTO))
 
 try:
     from streamlit.testing.v1 import AppTest
-except ImportError:                                   # Streamlit no instalado
+except ImportError:
     AppTest = None
 
 
 @unittest.skipIf(AppTest is None, "Streamlit no está instalado")
 class PruebasInterfaz(unittest.TestCase):
+    """Comprueba la interacción principal de la aplicación Streamlit."""
+
     def setUp(self):
         self.app = AppTest.from_file(str(CARPETA_PROYECTO / "app.py"), default_timeout=60)
         self.app.run()
-
-    # -- utilidades ---------------------------------------------------------
 
     def indicadores(self):
         """Devuelve los valores de los cuatro indicadores, en orden."""
@@ -46,8 +46,6 @@ class PruebasInterfaz(unittest.TestCase):
     def red(self):
         return self.app.session_state.red
 
-    # -- pruebas ------------------------------------------------------------
-
     def test_inicia_con_los_resultados_de_la_red_inicial(self):
         self.assertEqual(self.indicadores(), ["18 paq./h", "18 paq./h", "6", "✔ 7 de 7"])
         self.assertEqual(len(self.app.warning), 0)
@@ -55,7 +53,6 @@ class PruebasInterfaz(unittest.TestCase):
     def test_desactivar_exige_recalcular_y_luego_se_puede_reactivar(self):
         self.elegir("selector_desactivar", ("H", "T"))
         self.pulsar("boton_desactivar")
-        # Con cambios sin calcular no se muestran resultados antiguos.
         self.assertEqual(self.indicadores(), ["—", "—", "—", "—"])
         self.assertEqual(len(self.app.warning), 1)
         self.calcular()
@@ -97,7 +94,6 @@ class PruebasInterfaz(unittest.TestCase):
             self.pulsar("boton_agregar")
             self.assertEqual(len(self.errores()), 1, f"{origen} → {destino}")
             self.assertIn(palabra, self.errores()[0])
-            # La red no cambió: los resultados siguen vigentes, sin aviso de recálculo.
             self.assertEqual(self.indicadores()[0], "18 paq./h")
             self.assertEqual(len(self.red()["arcos"]), 18)
 
@@ -138,8 +134,9 @@ class PruebasInterfaz(unittest.TestCase):
         red = self.red()
         self.assertEqual((red["origen"], red["destino"], len(red["arcos"])), ("O", "T", 18))
         self.assertTrue(all(arco["activo"] for arco in red["arcos"]))
-        capacidad_i_t = [a["capacidad"] for a in red["arcos"]
-                         if (a["origen"], a["destino"]) == ("I", "T")]
+        capacidad_i_t = [
+            a["capacidad"] for a in red["arcos"] if (a["origen"], a["destino"]) == ("I", "T")
+        ]
         self.assertEqual(capacidad_i_t, [5])
 
     def test_los_tres_modos_de_visualizacion_funcionan(self):

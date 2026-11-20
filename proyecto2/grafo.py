@@ -1,47 +1,61 @@
-"""
-Modelo de la red de distribución (Proyecto 2).
+"""Modelo, validación y edición de la red de distribución.
 
-La red es un grafo dirigido G = (V, E) con una función de capacidad c:
-  - cada vértice de V es un centro logístico;
-  - cada arco (u, v) de E es una ruta de transporte que va de u a v;
-  - c(u, v) es el máximo de paquetes por hora que admite esa ruta
-    (un entero entre 1 y 12).
-
-Toda la red se guarda en un diccionario sencillo, igual al de los archivos JSON:
-
-    red = {
-        "nombre":   "Red inicial de distribución",
-        "vertices": ["O", "A", ...],
-        "origen":   "O",
-        "destino":  "T",
-        "arcos":    [{"origen": "O", "destino": "A", "capacidad": 8, "activo": True}, ...],
-    }
-
-Una ruta desactivada NO se borra: solo se marca con "activo": False. Así se
-puede reactivar después y la red original nunca se pierde.
-
-Este archivo solo administra la red (cargar, validar y modificar).
-Los algoritmos de flujo están en algoritmos.py.
+La red se representa con un diccionario que contiene vértices, extremos y
+arcos. Cada arco tiene origen, destino, capacidad y estado. Las rutas
+desactivadas se conservan para poder reactivarlas.
 """
 
 import copy
 import json
+from pathlib import Path
 
-# Límites que el enunciado exige ÚNICAMENTE a la configuración inicial.
 MINIMO_VERTICES = 10
 MAXIMO_VERTICES = 12
 MINIMO_ARCOS = 15
 MAXIMO_ARCOS = 20
 
-# Límites de capacidad: valen siempre, también después de modificar la red.
 CAPACIDAD_MINIMA = 1
 CAPACIDAD_MAXIMA = 12
 
+CLAVES_RED = {"vertices", "origen", "destino", "arcos"}
+CLAVES_ARCO = {"origen", "destino", "capacidad", "activo"}
+
 
 def cargar_red(ruta_archivo):
-    """Lee una red desde un archivo JSON y la devuelve como diccionario."""
-    with open(ruta_archivo, encoding="utf-8") as archivo:
-        return json.load(archivo)
+    """Carga y valida una red JSON antes de devolverla como diccionario."""
+    try:
+        with Path(ruta_archivo).open(encoding="utf-8") as archivo:
+            red = json.load(archivo)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"El archivo de red no contiene un JSON válido: {error.msg}.") from error
+
+    _validar_formato_red(red)
+    problemas = validar_estructura(red)
+    if problemas:
+        raise ValueError("La red no es válida: " + " ".join(problemas))
+    return red
+
+
+def _validar_formato_red(red):
+    """Comprueba las claves y tipos mínimos necesarios para trabajar con una red."""
+    if not isinstance(red, dict):
+        raise ValueError("El JSON de la red debe contener un objeto.")
+    if not CLAVES_RED <= red.keys():
+        faltantes = ", ".join(sorted(CLAVES_RED - red.keys()))
+        raise ValueError(f"Faltan claves obligatorias en la red: {faltantes}.")
+    if not isinstance(red["vertices"], list) or not all(
+        isinstance(vertice, str) for vertice in red["vertices"]
+    ):
+        raise ValueError("'vertices' debe ser una lista de nombres de texto.")
+    if not isinstance(red["arcos"], list):
+        raise ValueError("'arcos' debe ser una lista.")
+    for numero, arco in enumerate(red["arcos"], start=1):
+        if not isinstance(arco, dict) or not CLAVES_ARCO <= arco.keys():
+            raise ValueError(f"El arco {numero} no tiene la estructura requerida.")
+        if not isinstance(arco["origen"], str) or not isinstance(arco["destino"], str):
+            raise ValueError(f"Los extremos del arco {numero} deben ser texto.")
+        if not isinstance(arco["activo"], bool):
+            raise ValueError(f"El estado 'activo' del arco {numero} debe ser booleano.")
 
 
 def copiar_red(red):
@@ -94,10 +108,6 @@ def arcos_desactivados(red):
     return desactivados
 
 
-# ---------------------------------------------------------------------------
-# Validaciones
-# ---------------------------------------------------------------------------
-
 def validar_capacidad(capacidad):
     """
     Lanza ValueError si la capacidad no es un entero entre 1 y 12.
@@ -114,20 +124,7 @@ def validar_capacidad(capacidad):
 
 
 def validar_arco_nuevo(red, origen, destino, capacidad):
-    """
-    Comprueba que la ruta origen → destino se puede agregar a la red.
-
-    Lanza ValueError con un mensaje claro si la conexión está prohibida:
-      - algún extremo no es un centro de la red;
-      - es un lazo (origen = destino);
-      - ya existe esa misma ruta (repetida);
-      - ya existe la ruta contraria destino → origen (recíproca);
-      - la capacidad no es un entero entre 1 y 12.
-
-    Las rutas desactivadas también cuentan: siguen perteneciendo a la red y
-    se pueden reactivar, así que aceptar una repetida o una recíproca de una
-    ruta desactivada produciría una red prohibida en cuanto se reactivara.
-    """
+    """Valida una ruta nueva y lanza ``ValueError`` si no es admisible."""
     if origen not in red["vertices"] or destino not in red["vertices"]:
         raise ValueError("Los dos extremos de la ruta deben ser centros de la red.")
     if origen == destino:
@@ -148,12 +145,7 @@ def validar_arco_nuevo(red, origen, destino, capacidad):
 
 
 def validar_estructura(red):
-    """
-    Revisa las reglas que la red debe cumplir SIEMPRE (también tras modificarla).
-
-    Devuelve una lista de problemas en texto; la lista vacía significa que la
-    red es válida.
-    """
+    """Devuelve los problemas estructurales de la red; ``[]`` significa válida."""
     problemas = []
     vertices = red["vertices"]
 
@@ -176,7 +168,8 @@ def validar_estructura(red):
             problemas.append(f"El arco {texto_arco(origen, destino)} está repetido.")
         if (destino, origen) in arcos_vistos:
             problemas.append(
-                f"Los arcos {texto_arco(origen, destino)} y {texto_arco(destino, origen)} son recíprocos."
+                f"Los arcos {texto_arco(origen, destino)} y "
+                f"{texto_arco(destino, origen)} son recíprocos."
             )
         try:
             validar_capacidad(arco["capacidad"])
@@ -203,13 +196,7 @@ def buscar_vertices_aislados(red):
 
 
 def validar_tamano_inicial(red):
-    """
-    Revisa las condiciones que el enunciado exige SOLO a la configuración inicial:
-    10 ≤ |V| ≤ 12, 15 ≤ |E| ≤ 20 y ningún vértice aislado.
-
-    Devuelve una lista de problemas (vacía si todo se cumple). No debe usarse
-    para rechazar redes ya modificadas por el usuario.
-    """
+    """Valida el tamaño y conectividad exigidos solo para la red inicial."""
     problemas = []
     cantidad_vertices = len(red["vertices"])
     cantidad_arcos = len(red["arcos"])
@@ -229,10 +216,6 @@ def validar_tamano_inicial(red):
         problemas.append("Hay vértices aislados: " + ", ".join(aislados) + ".")
     return problemas
 
-
-# ---------------------------------------------------------------------------
-# Modificaciones (todas actúan sobre la red recibida)
-# ---------------------------------------------------------------------------
 
 def desactivar_arco(red, origen, destino):
     """Marca la ruta origen → destino como desactivada (deja de transportar)."""
@@ -257,7 +240,6 @@ def reactivar_arco(red, origen, destino):
 def cambiar_capacidad(red, origen, destino, capacidad):
     """
     Cambia la capacidad de una ruta existente por otro entero entre 1 y 12.
-
     Si el valor no es válido lanza ValueError y la red queda como estaba.
     """
     arco = buscar_arco(red, origen, destino)
@@ -270,7 +252,6 @@ def cambiar_capacidad(red, origen, destino, capacidad):
 def agregar_arco(red, origen, destino, capacidad):
     """
     Agrega la ruta dirigida origen → destino con la capacidad indicada, ya activa.
-
     Antes la valida con validar_arco_nuevo; si está prohibida lanza ValueError
     y la red queda exactamente como estaba.
     """
@@ -283,7 +264,6 @@ def agregar_arco(red, origen, destino, capacidad):
 def cambiar_extremos(red, origen, destino):
     """
     Cambia los vértices elegidos como origen (s) y destino (t).
-
     Lanza ValueError si no pertenecen a la red o si coinciden (con s = t no
     hay nada que transportar: los paquetes ya estarían en su destino).
     """

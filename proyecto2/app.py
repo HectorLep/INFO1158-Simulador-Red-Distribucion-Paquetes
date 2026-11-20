@@ -1,32 +1,14 @@
+"""Interfaz Streamlit del simulador de distribución de paquetes.
+
+La lógica de red, algoritmos, validación y dibujo se mantiene en módulos
+separados. El estado editable y el último cálculo viven en ``session_state``.
+
+Ejecución: ``python -m streamlit run proyecto2/app.py``.
 """
-Interfaz del Proyecto 2: simulador de una red de distribución de paquetes.
-
-Ejecutar desde la carpeta raíz:   python -m streamlit run proyecto2/app.py
-
-Este archivo solo se ocupa de la pantalla. Los cálculos están en:
-  - grafo.py ........ la red y sus modificaciones válidas;
-  - algoritmos.py ... flujo máximo (Edmonds–Karp) y corte mínimo;
-  - verificacion.py . comprobaciones matemáticas y escenarios de comparación;
-  - dibujo.py ....... la figura del grafo.
-
-Cómo funciona Streamlit: cada vez que el usuario toca un control, este archivo
-se ejecuta de nuevo de arriba abajo. Lo que debe sobrevivir entre ejecuciones
-se guarda en st.session_state:
-  - red ............ la red que el usuario está modificando;
-  - resultado ...... el último análisis calculado;
-  - red_calculada .. copia de la red sobre la que se hizo ese análisis.
-Si red y red_calculada son distintas, hay cambios sin calcular y los
-resultados anteriores se ocultan hasta pulsar «Calcular».
-"""
-
-# Streamlit y Plotly usan pandas por dentro (tablas y figuras), pero lo cargan
-# "a medias" la primera vez que lo necesitan. Importarlo aquí garantiza que
-# esté completamente cargado antes de dibujar; sin esta línea, pulsar un
-# control mientras la aplicación arranca podía producir un error de carga.
-import pandas  # noqa: F401
-import streamlit as st
 
 import dibujo
+import pandas  # noqa: F401
+import streamlit as st
 from algoritmos import (
     ESTRATEGIA_PROFUNDIDAD,
     analizar_red,
@@ -60,9 +42,7 @@ from verificacion import (
     verificar_resultado,
 )
 
-st.set_page_config(
-    page_title="Red de distribución de paquetes", page_icon="📦", layout="wide"
-)
+st.set_page_config(page_title="Red de distribución de paquetes", page_icon="📦", layout="wide")
 st.markdown(
     "<style>.block-container {padding-top: 2.4rem; padding-bottom: 3rem;}</style>",
     unsafe_allow_html=True,
@@ -70,10 +50,6 @@ st.markdown(
 
 UNIDAD = "paq./h"
 
-
-# ---------------------------------------------------------------------------
-# Estado de la aplicación
-# ---------------------------------------------------------------------------
 
 def calcular_resultados():
     """Ejecuta los algoritmos sobre la red actual y recuerda sobre qué red se calculó."""
@@ -95,26 +71,23 @@ def avisar(tipo, texto):
     st.session_state.aviso = (tipo, texto)
 
 
-# ---------------------------------------------------------------------------
-# Acciones de los botones. Streamlit las ejecuta ANTES de redibujar la página.
-# Si grafo.py rechaza la operación (ValueError), la red no cambia y se muestra
-# el motivo.
-# ---------------------------------------------------------------------------
-
 RECORDATORIO = " Pulsa «Calcular» para actualizar los resultados."
 
 
 def accion_calcular():
+    """Calcula de nuevo el flujo y el corte de la red visible."""
     calcular_resultados()
     avisar("exito", "Flujo máximo y corte mínimo calculados para la red que se muestra.")
 
 
 def accion_restaurar():
+    """Restaura la red inicial y calcula sus resultados."""
     cargar_estado_inicial()
     avisar("exito", "Se restauró la red inicial y se recalcularon sus resultados.")
 
 
 def accion_cambiar_extremos():
+    """Aplica los centros seleccionados como origen y destino."""
     red = st.session_state.red
     origen = st.session_state.selector_origen
     destino = st.session_state.selector_destino
@@ -122,13 +95,13 @@ def accion_cambiar_extremos():
         cambiar_extremos(red, origen, destino)
         avisar("exito", f"Origen: {origen}. Destino: {destino}." + RECORDATORIO)
     except ValueError as error:
-        # Los selectores vuelven a mostrar los extremos que siguen vigentes.
         st.session_state.selector_origen = red["origen"]
         st.session_state.selector_destino = red["destino"]
         avisar("error", str(error))
 
 
 def accion_desactivar():
+    """Desactiva la ruta seleccionada desde el panel lateral."""
     origen, destino = st.session_state.selector_desactivar
     try:
         desactivar_arco(st.session_state.red, origen, destino)
@@ -138,6 +111,7 @@ def accion_desactivar():
 
 
 def accion_reactivar():
+    """Reactiva la ruta seleccionada desde el panel lateral."""
     origen, destino = st.session_state.selector_reactivar
     try:
         reactivar_arco(st.session_state.red, origen, destino)
@@ -147,24 +121,32 @@ def accion_reactivar():
 
 
 def accion_cambiar_capacidad():
+    """Actualiza la capacidad de la ruta seleccionada."""
     origen, destino = st.session_state.selector_capacidad
     capacidad = st.session_state.entrada_capacidad
     try:
         cambiar_capacidad(st.session_state.red, origen, destino, capacidad)
-        avisar("exito", f"La ruta {texto_arco(origen, destino)} ahora admite {capacidad} "
-                        f"{UNIDAD}." + RECORDATORIO)
+        avisar(
+            "exito",
+            f"La ruta {texto_arco(origen, destino)} ahora admite {capacidad} "
+            f"{UNIDAD}." + RECORDATORIO,
+        )
     except ValueError as error:
         avisar("error", "No se cambió la capacidad. " + str(error))
 
 
 def accion_agregar():
+    """Agrega una conexión nueva a la red actual."""
     origen = st.session_state.selector_nuevo_origen
     destino = st.session_state.selector_nuevo_destino
     capacidad = st.session_state.entrada_nueva_capacidad
     try:
         agregar_arco(st.session_state.red, origen, destino, capacidad)
-        avisar("exito", f"Ruta {texto_arco(origen, destino)} agregada con capacidad "
-                        f"{capacidad} {UNIDAD}." + RECORDATORIO)
+        avisar(
+            "exito",
+            f"Ruta {texto_arco(origen, destino)} agregada con capacidad "
+            f"{capacidad} {UNIDAD}." + RECORDATORIO,
+        )
     except ValueError as error:
         avisar("error", "No se agregó la conexión. " + str(error))
 
@@ -182,27 +164,28 @@ def texto_de_par(arco):
     return texto_arco(arco[0], arco[1])
 
 
-# ---------------------------------------------------------------------------
-# Panel lateral: controles
-# ---------------------------------------------------------------------------
-
 def mostrar_panel_lateral(red):
+    """Construye los controles de edición de la red en la barra lateral."""
     capacidades = capacidades_activas(red)
     activas = list(capacidades)
 
     def texto_con_capacidad(arco):
+        """Formatea una ruta activa junto con su capacidad."""
         return f"{texto_de_par(arco)}   (capacidad {capacidades[arco]})"
 
     with st.sidebar:
         st.header("Controles")
         st.button(
-            "▶ Calcular / Recalcular", type="primary", width="stretch",
-            on_click=accion_calcular, key="boton_calcular",
+            "▶ Calcular / Recalcular",
+            type="primary",
+            on_click=accion_calcular,
+            key="boton_calcular",
             help="Ejecuta Edmonds–Karp y halla el corte mínimo sobre la red actual.",
         )
         st.button(
-            "↺ Restaurar red inicial", width="stretch",
-            on_click=accion_restaurar, key="boton_restaurar",
+            "↺ Restaurar red inicial",
+            on_click=accion_restaurar,
+            key="boton_restaurar",
             help="Descarta todos los cambios y vuelve a la configuración inicial.",
         )
         st.caption("Después de cada cambio, pulsa «Calcular / Recalcular».")
@@ -211,55 +194,71 @@ def mostrar_panel_lateral(red):
             columna_origen, columna_destino = st.columns(2)
             columna_origen.selectbox("Origen (s)", red["vertices"], key="selector_origen")
             columna_destino.selectbox("Destino (t)", red["vertices"], key="selector_destino")
-            st.button("Aplicar origen y destino", width="stretch",
-                      on_click=accion_cambiar_extremos, key="boton_extremos")
+            st.button(
+                "Aplicar origen y destino", on_click=accion_cambiar_extremos, key="boton_extremos"
+            )
             st.caption("Deben ser dos centros distintos.")
 
         with st.expander("Desactivar o reactivar una ruta", expanded=True):
             if activas:
-                st.selectbox("Ruta activa", activas, format_func=texto_con_capacidad,
-                             key="selector_desactivar")
-                st.button("Desactivar ruta", width="stretch",
-                          on_click=accion_desactivar, key="boton_desactivar")
+                st.selectbox(
+                    "Ruta activa",
+                    activas,
+                    format_func=texto_con_capacidad,
+                    key="selector_desactivar",
+                )
+                st.button("Desactivar ruta", on_click=accion_desactivar, key="boton_desactivar")
             desactivadas = arcos_desactivados(red)
             if desactivadas:
-                st.selectbox("Ruta desactivada", desactivadas, format_func=texto_de_par,
-                             key="selector_reactivar")
-                st.button("Reactivar ruta", width="stretch",
-                          on_click=accion_reactivar, key="boton_reactivar")
+                st.selectbox(
+                    "Ruta desactivada",
+                    desactivadas,
+                    format_func=texto_de_par,
+                    key="selector_reactivar",
+                )
+                st.button("Reactivar ruta", on_click=accion_reactivar, key="boton_reactivar")
             else:
-                st.caption("No hay rutas desactivadas. Una ruta desactivada no transporta "
-                           "paquetes, pero no se borra.")
+                st.caption(
+                    "No hay rutas desactivadas. Una ruta desactivada no transporta "
+                    "paquetes, pero no se borra."
+                )
 
         with st.expander("Modificar una capacidad", expanded=True):
             if activas:
-                st.selectbox("Ruta", activas, format_func=texto_con_capacidad,
-                             key="selector_capacidad")
-                st.number_input(f"Nueva capacidad ({UNIDAD})", min_value=CAPACIDAD_MINIMA,
-                                max_value=CAPACIDAD_MAXIMA, value=10, step=1,
-                                key="entrada_capacidad")
-                st.button("Cambiar capacidad", width="stretch",
-                          on_click=accion_cambiar_capacidad, key="boton_capacidad")
+                st.selectbox(
+                    "Ruta", activas, format_func=texto_con_capacidad, key="selector_capacidad"
+                )
+                st.number_input(
+                    f"Nueva capacidad ({UNIDAD})",
+                    min_value=CAPACIDAD_MINIMA,
+                    max_value=CAPACIDAD_MAXIMA,
+                    value=10,
+                    step=1,
+                    key="entrada_capacidad",
+                )
+                st.button(
+                    "Cambiar capacidad", on_click=accion_cambiar_capacidad, key="boton_capacidad"
+                )
             st.caption("Entero entre 1 y 12 paquetes por hora.")
 
         with st.expander("Agregar una conexión", expanded=True):
             columna_desde, columna_hacia = st.columns(2)
             columna_desde.selectbox("Desde", red["vertices"], key="selector_nuevo_origen")
-            columna_hacia.selectbox("Hacia", red["vertices"], index=1,
-                                    key="selector_nuevo_destino")
-            st.number_input(f"Capacidad ({UNIDAD})", min_value=CAPACIDAD_MINIMA,
-                            max_value=CAPACIDAD_MAXIMA, value=5, step=1,
-                            key="entrada_nueva_capacidad")
-            st.button("Agregar conexión", width="stretch",
-                      on_click=accion_agregar, key="boton_agregar")
+            columna_hacia.selectbox("Hacia", red["vertices"], index=1, key="selector_nuevo_destino")
+            st.number_input(
+                f"Capacidad ({UNIDAD})",
+                min_value=CAPACIDAD_MINIMA,
+                max_value=CAPACIDAD_MAXIMA,
+                value=5,
+                step=1,
+                key="entrada_nueva_capacidad",
+            )
+            st.button("Agregar conexión", on_click=accion_agregar, key="boton_agregar")
             st.caption("No se admiten lazos, rutas repetidas ni recíprocas.")
 
 
-# ---------------------------------------------------------------------------
-# Zona superior: título, avisos e indicadores
-# ---------------------------------------------------------------------------
-
 def mostrar_encabezado():
+    """Muestra el título y la explicación general del simulador."""
     st.title("Simulador de una red de distribución de paquetes")
     st.caption(
         "Proyecto 2 · Teoría de Grafos (INFO1158). La red es un grafo dirigido: cada "
@@ -285,8 +284,10 @@ def mostrar_indicadores(red, resultado):
     """Cuatro indicadores; `resultado` es None cuando hay cambios sin calcular."""
     columnas = st.columns(4)
     titulos = [
-        f"Flujo máximo {red['origen']} → {red['destino']}", "Capacidad del corte mínimo",
-        "Caminos aumentantes", "Comprobaciones",
+        f"Flujo máximo {red['origen']} → {red['destino']}",
+        "Capacidad del corte mínimo",
+        "Caminos aumentantes",
+        "Comprobaciones",
     ]
     if resultado is None:
         for columna, titulo in zip(columnas, titulos):
@@ -301,10 +302,6 @@ def mostrar_indicadores(red, resultado):
     columnas[2].metric(titulos[2], len(resultado["pasos"]), border=True)
     columnas[3].metric(titulos[3], f"{marca} {cumplidas} de {len(comprobaciones)}", border=True)
 
-
-# ---------------------------------------------------------------------------
-# Zona principal: el grafo
-# ---------------------------------------------------------------------------
 
 def texto_conjunto(elementos):
     """Escribe una lista como conjunto matemático: {a, b, c} o ∅."""
@@ -333,43 +330,54 @@ def texto_suma_del_corte(resultado):
 def describir_modo(resultado, modo):
     """Frase corta que explica lo que se ve en el grafo."""
     if modo == dibujo.MODO_FLUJO:
-        return (f"Cada etiqueta es **flujo/capacidad**. El flujo máximo es "
-                f"**{resultado['flujo_maximo']} paquetes por hora**; el grosor de la flecha "
-                "crece con el flujo y el azul oscuro marca las rutas saturadas.")
+        return (
+            f"Cada etiqueta es **flujo/capacidad**. El flujo máximo es "
+            f"**{resultado['flujo_maximo']} paquetes por hora**; el grosor de la flecha "
+            "crece con el flujo y el azul oscuro marca las rutas saturadas."
+        )
     if modo == dibujo.MODO_CORTE:
         if not resultado["corte"]:
-            return ("No hay ninguna ruta de S a T: el destino no es alcanzable y el corte "
-                    "mínimo es vacío (capacidad 0).")
-        return (f"En rojo discontinuo, las rutas del corte mínimo: van del conjunto **S** "
-                f"(celeste) al conjunto **T** (naranja claro). Su capacidad total es "
-                f"**{texto_suma_del_corte(resultado)} paquetes por hora**.")
+            return (
+                "No hay ninguna ruta de S a T: el destino no es alcanzable y el corte "
+                "mínimo es vacío (capacidad 0)."
+            )
+        return (
+            f"En rojo discontinuo, las rutas del corte mínimo: van del conjunto **S** "
+            f"(celeste) al conjunto **T** (naranja claro). Su capacidad total es "
+            f"**{texto_suma_del_corte(resultado)} paquetes por hora**."
+        )
     return "Cada etiqueta es la **capacidad** de la ruta, en paquetes por hora."
 
 
 def mostrar_grafo(red, resultado):
+    """Muestra el grafo y oculta los resultados si hay cambios pendientes."""
     if resultado is None:
         st.warning(
             "La red cambió y los resultados anteriores ya no corresponden. "
             "Pulsa **Calcular / Recalcular** para ejecutar el algoritmo sobre esta red."
         )
-        st.button("▶ Calcular ahora", type="primary", on_click=accion_calcular,
-                  key="boton_calcular_aviso")
+        st.button(
+            "▶ Calcular ahora", type="primary", on_click=accion_calcular, key="boton_calcular_aviso"
+        )
         with st.container(border=True):
-            st.plotly_chart(dibujo.crear_figura(red, None, dibujo.MODO_CAPACIDADES),
-                            theme=None, config={"displayModeBar": False},
-                            key="grafo_principal")
+            st.plotly_chart(
+                dibujo.crear_figura(red, None, dibujo.MODO_CAPACIDADES),
+                theme=None,
+                config={"displayModeBar": False},
+                key="grafo_principal",
+            )
         return
 
     modo = st.radio("Mostrar en el grafo", dibujo.MODOS, index=1, horizontal=True, key="modo")
     with st.container(border=True):
-        st.plotly_chart(dibujo.crear_figura(red, resultado, modo),
-                        theme=None, config={"displayModeBar": False}, key="grafo_principal")
+        st.plotly_chart(
+            dibujo.crear_figura(red, resultado, modo),
+            theme=None,
+            config={"displayModeBar": False},
+            key="grafo_principal",
+        )
     st.markdown(describir_modo(resultado, modo))
 
-
-# ---------------------------------------------------------------------------
-# Zona inferior: pestañas de detalle
-# ---------------------------------------------------------------------------
 
 def tabla_de_flujos(red, resultado):
     """Una fila por ruta: flujo, capacidad, capacidad libre y estado."""
@@ -377,9 +385,16 @@ def tabla_de_flujos(red, resultado):
     for arco in red["arcos"]:
         par = (arco["origen"], arco["destino"])
         if not arco["activo"]:
-            filas.append({"Ruta": texto_de_par(par), "Flujo / capacidad": "—",
-                          "Flujo": None, "Capacidad": arco["capacidad"],
-                          "Capacidad libre": None, "Estado": "Desactivada"})
+            filas.append(
+                {
+                    "Ruta": texto_de_par(par),
+                    "Flujo / capacidad": "—",
+                    "Flujo": None,
+                    "Capacidad": arco["capacidad"],
+                    "Capacidad libre": None,
+                    "Estado": "Desactivada",
+                }
+            )
             continue
         flujo = resultado["flujo"][par]
         if flujo == arco["capacidad"]:
@@ -390,33 +405,48 @@ def tabla_de_flujos(red, resultado):
             estado = "Con capacidad libre"
         if par in resultado["corte"]:
             estado += " · en el corte mínimo"
-        filas.append({"Ruta": texto_de_par(par),
-                      "Flujo / capacidad": f"{flujo}/{arco['capacidad']}",
-                      "Flujo": flujo, "Capacidad": arco["capacidad"],
-                      "Capacidad libre": arco["capacidad"] - flujo, "Estado": estado})
+        filas.append(
+            {
+                "Ruta": texto_de_par(par),
+                "Flujo / capacidad": f"{flujo}/{arco['capacidad']}",
+                "Flujo": flujo,
+                "Capacidad": arco["capacidad"],
+                "Capacidad libre": arco["capacidad"] - flujo,
+                "Estado": estado,
+            }
+        )
     return filas
 
 
 def mostrar_resultados(red, resultado):
+    """Muestra el flujo por ruta y la información del corte mínimo."""
     columna_flujo, columna_corte = st.columns([3, 2])
 
     with columna_flujo:
         st.subheader("Flujo por ruta")
-        st.markdown(f"Flujo máximo: **{resultado['flujo_maximo']} paquetes por hora** de "
-                    f"{red['origen']} a {red['destino']}.")
+        st.markdown(
+            f"Flujo máximo: **{resultado['flujo_maximo']} paquetes por hora** de "
+            f"{red['origen']} a {red['destino']}."
+        )
         mostrar_tabla(tabla_de_flujos(red, resultado))
-        st.caption("x(u, v)/c(u, v): paquetes por hora que se envían por la ruta, sobre los "
-                   "que admite. La distribución del flujo puede no ser única; el valor "
-                   "máximo sí lo es.")
+        st.caption(
+            "x(u, v)/c(u, v): paquetes por hora que se envían por la ruta, sobre los "
+            "que admite. La distribución del flujo puede no ser única; el valor "
+            "máximo sí lo es."
+        )
 
     with columna_corte:
         st.subheader("Corte mínimo")
-        st.markdown(f"- **S** = {texto_conjunto(resultado['lado_origen'])}\n"
-                    f"- **T** = {texto_conjunto(resultado['lado_destino'])}\n"
-                    f"- Rutas de S a T: {texto_corte(resultado)}\n"
-                    f"- Capacidad del corte: c(S, T) = **{texto_suma_del_corte(resultado)}**")
-        st.success(f"Flujo máximo = {resultado['flujo_maximo']} = "
-                   f"{resultado['capacidad_corte']} = capacidad del corte mínimo")
+        st.markdown(
+            f"- **S** = {texto_conjunto(resultado['lado_origen'])}\n"
+            f"- **T** = {texto_conjunto(resultado['lado_destino'])}\n"
+            f"- Rutas de S a T: {texto_corte(resultado)}\n"
+            f"- Capacidad del corte: c(S, T) = **{texto_suma_del_corte(resultado)}**"
+        )
+        st.success(
+            f"Flujo máximo = {resultado['flujo_maximo']} = "
+            f"{resultado['capacidad_corte']} = capacidad del corte mínimo"
+        )
         st.caption(
             "S son los centros alcanzables desde el origen en la red residual final. Las "
             "rutas del corte están saturadas: son el cuello de botella. Para transportar "
@@ -426,13 +456,16 @@ def mostrar_resultados(red, resultado):
 
 
 def tabla_de_comprobaciones(comprobaciones):
+    """Convierte las comprobaciones internas en filas para Streamlit."""
     filas = []
     for comprobacion in comprobaciones:
-        filas.append({
-            "Comprobación": comprobacion["comprobacion"],
-            "Resultado": "✔ Cumple" if comprobacion["cumple"] else "✖ No cumple",
-            "Detalle": comprobacion["detalle"],
-        })
+        filas.append(
+            {
+                "Comprobación": comprobacion["comprobacion"],
+                "Resultado": "✔ Cumple" if comprobacion["cumple"] else "✖ No cumple",
+                "Detalle": comprobacion["detalle"],
+            }
+        )
     return filas
 
 
@@ -450,14 +483,24 @@ def tabla_de_balances(red, resultado):
         else:
             papel = "Intermedio"
             observacion = "✔ se conserva" if entra == sale else "✖ no se conserva"
-        filas.append({"Centro": vertice, "Papel": papel, "Entra": entra, "Sale": sale,
-                      "Observación": observacion})
+        filas.append(
+            {
+                "Centro": vertice,
+                "Papel": papel,
+                "Entra": entra,
+                "Sale": sale,
+                "Observación": observacion,
+            }
+        )
     return filas
 
 
 def mostrar_verificacion(red, resultado):
-    st.markdown("Comprobaciones hechas por código sobre el flujo que se muestra "
-                "(archivo `verificacion.py`).")
+    """Muestra las comprobaciones matemáticas y los balances de cada centro."""
+    st.markdown(
+        "Comprobaciones hechas por código sobre el flujo que se muestra "
+        "(archivo `verificacion.py`)."
+    )
     comprobaciones = verificar_resultado(red, resultado)
     mostrar_tabla(tabla_de_comprobaciones(comprobaciones))
     if todo_cumple(comprobaciones):
@@ -469,23 +512,27 @@ def mostrar_verificacion(red, resultado):
 
 
 def tabla_de_pasos(pasos):
+    """Convierte los pasos de Edmonds-Karp en filas para la interfaz."""
     filas = []
     for numero, paso in enumerate(pasos, start=1):
         inversos = ", ".join(
             f"{texto_arco(u, v)} (devuelve flujo de {texto_arco(v, u)})"
             for u, v in paso["arcos_inversos"]
         )
-        filas.append({
-            "Paso": numero,
-            "Camino aumentante": texto_camino(paso["camino"]),
-            "Cuello de botella": paso["cuello_de_botella"],
-            "Flujo acumulado": paso["flujo_acumulado"],
-            "Arcos inversos usados": inversos or "—",
-        })
+        filas.append(
+            {
+                "Paso": numero,
+                "Camino aumentante": texto_camino(paso["camino"]),
+                "Cuello de botella": paso["cuello_de_botella"],
+                "Flujo acumulado": paso["flujo_acumulado"],
+                "Arcos inversos usados": inversos or "—",
+            }
+        )
     return filas
 
 
 def mostrar_algoritmo(red, resultado):
+    """Explica y muestra los caminos aumentantes usados por ambos algoritmos."""
     st.markdown(
         "**Edmonds–Karp** (Ford–Fulkerson con búsqueda en anchura). En cada paso se "
         "construye la **red residual**, se busca con BFS el camino aumentante con menos "
@@ -502,7 +549,10 @@ def mostrar_algoritmo(red, resultado):
     )
     with st.expander("Comparación con Ford–Fulkerson usando búsqueda en profundidad (DFS)"):
         flujo_dfs, pasos_dfs = calcular_flujo_maximo(
-            red["vertices"], capacidades_activas(red), red["origen"], red["destino"],
+            red["vertices"],
+            capacidades_activas(red),
+            red["origen"],
+            red["destino"],
             ESTRATEGIA_PROFUNDIDAD,
         )
         st.markdown(
@@ -524,6 +574,7 @@ def texto_cambio(antes, despues):
 
 
 def mostrar_escenarios():
+    """Calcula y presenta la comparación de los escenarios solicitados."""
     st.markdown(
         "Tres configuraciones con el mismo origen **O** y destino **T**. Cada modificación "
         "se aplica sobre una copia de la red inicial (no se acumulan) y no depende de los "
@@ -534,16 +585,18 @@ def mostrar_escenarios():
     filas = []
     for escenario in comparacion:
         resultado = escenario["resultado"]
-        filas.append({
-            "Escenario": escenario["nombre"],
-            "Modificación": escenario["cambio"],
-            "Flujo máximo": resultado["flujo_maximo"],
-            "Capacidad del corte": resultado["capacidad_corte"],
-            "Verificado": "✔" if todo_cumple(escenario["comprobaciones"]) else "✖",
-            "Corte mínimo": texto_corte(resultado),
-            "S": texto_conjunto(resultado["lado_origen"]),
-            "T": texto_conjunto(resultado["lado_destino"]),
-        })
+        filas.append(
+            {
+                "Escenario": escenario["nombre"],
+                "Modificación": escenario["cambio"],
+                "Flujo máximo": resultado["flujo_maximo"],
+                "Capacidad del corte": resultado["capacidad_corte"],
+                "Verificado": "✔" if todo_cumple(escenario["comprobaciones"]) else "✖",
+                "Corte mínimo": texto_corte(resultado),
+                "S": texto_conjunto(resultado["lado_origen"]),
+                "T": texto_conjunto(resultado["lado_destino"]),
+            }
+        )
     mostrar_tabla(filas)
 
     inicial, sin_ruta, con_capacidad = [e["resultado"] for e in comparacion]
@@ -572,18 +625,22 @@ def mostrar_escenarios():
     columna_escenario, columna_modo = st.columns([1, 2])
     nombres = [f"{e['nombre']} ({e['cambio']})" for e in comparacion]
     elegido = columna_escenario.selectbox("Escenario", nombres, key="escenario_elegido")
-    modo = columna_modo.radio("Mostrar", dibujo.MODOS, index=1, horizontal=True,
-                              key="modo_escenario")
+    modo = columna_modo.radio(
+        "Mostrar", dibujo.MODOS, index=1, horizontal=True, key="modo_escenario"
+    )
     escenario = comparacion[nombres.index(elegido)]
     with st.container(border=True):
         st.plotly_chart(
             dibujo.crear_figura(escenario["red"], escenario["resultado"], modo, alto=500),
-            theme=None, config={"displayModeBar": False}, key="grafo_escenario",
+            theme=None,
+            config={"displayModeBar": False},
+            key="grafo_escenario",
         )
     mostrar_tabla(tabla_de_comprobaciones(escenario["comprobaciones"]))
 
 
 def mostrar_modelo(red):
+    """Presenta la representación matemática y la configuración de la red."""
     vertices = red["vertices"]
     st.markdown(
         "La red se modela como un **grafo dirigido G = (V, E)** con una **función de "
@@ -596,19 +653,23 @@ def mostrar_modelo(red):
         f"- Origen s = **{red['origen']}**, destino t = **{red['destino']}**."
     )
     st.markdown(f"**V** = {texto_conjunto(vertices)}, |V| = {len(vertices)}")
-    st.markdown(f"**E** tiene {len(red['arcos'])} arcos "
-                f"({len(capacidades_activas(red))} activos). Valores de c:")
+    st.markdown(
+        f"**E** tiene {len(red['arcos'])} arcos "
+        f"({len(capacidades_activas(red))} activos). Valores de c:"
+    )
 
     columna_arcos, columna_derecha = st.columns(2)
     with columna_arcos:
         st.markdown("**Arcos y capacidades**")
         filas_de_arcos = []
         for arco in red["arcos"]:
-            filas_de_arcos.append({
-                "Arco (u, v)": texto_arco(arco["origen"], arco["destino"]),
-                "c(u, v)": arco["capacidad"],
-                "Estado": "Activo" if arco["activo"] else "Desactivado",
-            })
+            filas_de_arcos.append(
+                {
+                    "Arco (u, v)": texto_arco(arco["origen"], arco["destino"]),
+                    "c(u, v)": arco["capacidad"],
+                    "Estado": "Activo" if arco["activo"] else "Desactivado",
+                }
+            )
         mostrar_tabla(filas_de_arcos)
     with columna_derecha:
         st.markdown("**Significado de los vértices**")
@@ -622,30 +683,42 @@ def mostrar_modelo(red):
     st.markdown("**Condiciones de la configuración inicial**")
     condiciones = comprobar_condiciones_iniciales(cargar_red(ARCHIVO_RED_INICIAL))
     mostrar_tabla(tabla_de_comprobaciones(condiciones))
-    st.caption("Los intervalos de vértices y arcos se exigen solo a la red inicial; las "
-               "modificaciones pueden cambiar la cantidad de arcos. Los lazos, los arcos "
-               "repetidos, los recíprocos y las capacidades fuera de 1–12 se rechazan siempre.")
+    st.caption(
+        "Los intervalos de vértices y arcos se exigen solo a la red inicial; las "
+        "modificaciones pueden cambiar la cantidad de arcos. Los lazos, los arcos "
+        "repetidos, los recíprocos y las capacidades fuera de 1–12 se rechazan siempre."
+    )
 
 
-# Flujo factible encontrado A MANO para el caso de 5 vértices (ver GUIA_DE_ESTUDIO.md).
 FLUJO_MANUAL = {
-    ("O", "A"): 5, ("O", "B"): 3, ("A", "C"): 2, ("A", "T"): 3, ("B", "C"): 3, ("C", "T"): 5,
+    ("O", "A"): 5,
+    ("O", "B"): 3,
+    ("A", "C"): 2,
+    ("A", "T"): 3,
+    ("B", "C"): 3,
+    ("C", "T"): 5,
 }
 CORTE_MANUAL = [("A", "T"), ("C", "T")]
 
 
 def mostrar_caso_manual():
+    """Presenta el caso pequeño resuelto manualmente y su contraste automático."""
     red = cargar_red(ARCHIVO_CASO_MANUAL)
     resultado = analizar_red(red)
     capacidades = resultado["capacidades"]
-    st.markdown("Caso independiente de 5 vértices que se resuelve a mano y se contrasta "
-                "con el código.")
+    st.markdown(
+        "Caso independiente de 5 vértices que se resuelve a mano y se contrasta " "con el código."
+    )
     columna_figura, columna_texto = st.columns([3, 2])
     with columna_figura:
         modo = st.radio("Mostrar", dibujo.MODOS, index=1, horizontal=True, key="modo_manual")
         with st.container(border=True):
-            st.plotly_chart(dibujo.crear_figura(red, resultado, modo, alto=400),
-                            theme=None, config={"displayModeBar": False}, key="grafo_manual")
+            st.plotly_chart(
+                dibujo.crear_figura(red, resultado, modo, alto=400),
+                theme=None,
+                config={"displayModeBar": False},
+                key="grafo_manual",
+            )
     with columna_texto:
         st.markdown(
             "**Resolución manual**\n\n"
@@ -663,31 +736,50 @@ def mostrar_caso_manual():
     st.markdown("**Contraste con el código, ruta por ruta**")
     filas = []
     for arco, capacidad in capacidades.items():
-        filas.append({
-            "Ruta": texto_de_par(arco), "Capacidad": capacidad,
-            "Flujo manual": FLUJO_MANUAL[arco], "Flujo del código": resultado["flujo"][arco],
-            "¿Igual?": "Sí" if FLUJO_MANUAL[arco] == resultado["flujo"][arco] else "No",
-        })
+        filas.append(
+            {
+                "Ruta": texto_de_par(arco),
+                "Capacidad": capacidad,
+                "Flujo manual": FLUJO_MANUAL[arco],
+                "Flujo del código": resultado["flujo"][arco],
+                "¿Igual?": "Sí" if FLUJO_MANUAL[arco] == resultado["flujo"][arco] else "No",
+            }
+        )
     mostrar_tabla(filas)
 
     manual_factible = (
         buscar_violaciones_de_capacidad(capacidades, FLUJO_MANUAL) == []
         and buscar_violaciones_de_conservacion(
-            red["vertices"], FLUJO_MANUAL, red["origen"], red["destino"]) == []
+            red["vertices"], FLUJO_MANUAL, red["origen"], red["destino"]
+        )
+        == []
     )
     valor_manual = calcular_valor_del_flujo(FLUJO_MANUAL, red["origen"])
     capacidad_corte_manual = sum(capacidades[arco] for arco in CORTE_MANUAL)
-    mostrar_tabla([
-        {"Concepto": "Flujo factible (capacidad y conservación)",
-         "Manual": "✔" if manual_factible else "✖", "Código": "✔"
-            if todo_cumple(verificar_resultado(red, resultado)) else "✖"},
-        {"Concepto": "Valor del flujo (paquetes por hora)",
-         "Manual": str(valor_manual), "Código": str(resultado["flujo_maximo"])},
-        {"Concepto": "Corte hallado",
-         "Manual": "{A → T (3), C → T (5)}", "Código": texto_corte(resultado)},
-        {"Concepto": "Capacidad del corte",
-         "Manual": str(capacidad_corte_manual), "Código": str(resultado["capacidad_corte"])},
-    ])
+    mostrar_tabla(
+        [
+            {
+                "Concepto": "Flujo factible (capacidad y conservación)",
+                "Manual": "✔" if manual_factible else "✖",
+                "Código": "✔" if todo_cumple(verificar_resultado(red, resultado)) else "✖",
+            },
+            {
+                "Concepto": "Valor del flujo (paquetes por hora)",
+                "Manual": str(valor_manual),
+                "Código": str(resultado["flujo_maximo"]),
+            },
+            {
+                "Concepto": "Corte hallado",
+                "Manual": "{A → T (3), C → T (5)}",
+                "Código": texto_corte(resultado),
+            },
+            {
+                "Concepto": "Capacidad del corte",
+                "Manual": str(capacidad_corte_manual),
+                "Código": str(resultado["capacidad_corte"]),
+            },
+        ]
+    )
     st.info(
         "El valor máximo (8) y el corte coinciden. La distribución por ruta es distinta: a "
         "mano se envían 5 por O → A y 3 por O → B; el código, que elige primero los caminos "
@@ -695,10 +787,6 @@ def mostrar_caso_manual():
         "pero puede alcanzarse con repartos diferentes."
     )
 
-
-# ---------------------------------------------------------------------------
-# Programa principal
-# ---------------------------------------------------------------------------
 
 if "red" not in st.session_state:
     cargar_estado_inicial()
@@ -708,7 +796,6 @@ mostrar_panel_lateral(red)
 mostrar_encabezado()
 mostrar_aviso()
 
-# Los resultados solo se muestran si corresponden exactamente a la red actual.
 if red == st.session_state.red_calculada:
     resultado = st.session_state.resultado
 else:
@@ -717,11 +804,23 @@ else:
 mostrar_indicadores(red, resultado)
 mostrar_grafo(red, resultado)
 
-(pestana_resultados, pestana_verificacion, pestana_algoritmo, pestana_escenarios,
- pestana_modelo, pestana_manual) = st.tabs([
-    "Resultados", "Verificación", "Algoritmo paso a paso", "Escenarios",
-    "Modelo matemático", "Caso manual",
-])
+(
+    pestana_resultados,
+    pestana_verificacion,
+    pestana_algoritmo,
+    pestana_escenarios,
+    pestana_modelo,
+    pestana_manual,
+) = st.tabs(
+    [
+        "Resultados",
+        "Verificación",
+        "Algoritmo paso a paso",
+        "Escenarios",
+        "Modelo matemático",
+        "Caso manual",
+    ]
+)
 with pestana_resultados:
     if resultado is None:
         st.info("Resultados pendientes: pulsa «Calcular / Recalcular».")

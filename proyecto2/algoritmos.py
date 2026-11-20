@@ -1,25 +1,15 @@
-"""
-Algoritmos del Proyecto 2, escritos con código propio (sin bibliotecas de grafos).
+"""Cálculo de flujo máximo y corte mínimo sin bibliotecas de grafos.
 
-  1. Flujo máximo ... método de caminos aumentantes de Ford–Fulkerson,
-                      eligiendo cada camino con búsqueda en anchura (BFS):
-                      es el algoritmo de Edmonds–Karp.
-  2. Corte mínimo ... vértices alcanzables desde el origen en la red residual final.
-
-Convenciones usadas en todo el archivo:
-  - vertices    : lista de nombres, por ejemplo ["O", "A", "T"].
-  - capacidades : diccionario (u, v) -> capacidad, solo con las rutas ACTIVAS.
-  - flujo       : diccionario (u, v) -> paquetes por hora que se envían por la ruta.
-  - residual    : diccionario u -> {v: capacidad residual}; solo guarda valores > 0.
-  - camino      : lista de vértices consecutivos, por ejemplo ["O", "A", "D", "T"].
+El flujo máximo se obtiene con Edmonds-Karp y el corte mínimo se extrae de la
+red residual final. Las capacidades recibidas corresponden a rutas activas.
 """
 
 from collections import deque
 
 from grafo import capacidades_activas
 
-ESTRATEGIA_ANCHURA = "anchura"            # BFS: Edmonds–Karp (la que usa la aplicación)
-ESTRATEGIA_PROFUNDIDAD = "profundidad"    # DFS: Ford–Fulkerson clásico (solo para comparar)
+ESTRATEGIA_ANCHURA = "anchura"
+ESTRATEGIA_PROFUNDIDAD = "profundidad"
 
 
 def arcos_de_camino(camino):
@@ -55,40 +45,19 @@ def comprobar_red_admisible(vertices, capacidades, origen, destino):
             raise ValueError(f"La capacidad de {u} → {v} debe ser un entero positivo.")
 
 
-# ---------------------------------------------------------------------------
-# Red residual
-# ---------------------------------------------------------------------------
-
 def construir_red_residual(vertices, capacidades, flujo):
-    """
-    Construye la red residual que corresponde al flujo actual.
-
-    Por cada ruta original u → v con capacidad c y flujo x:
-      - si c − x > 0 hay un arco residual u → v de capacidad c − x
-        ("todavía caben c − x paquetes más por esta ruta");
-      - si x > 0 hay un arco residual v → u de capacidad x
-        (ARCO INVERSO: "se pueden retirar hasta x paquetes de esta ruta").
-
-    Un arco inverso NO es una ruta real: es el permiso para deshacer parte de
-    una decisión anterior y redirigir esos paquetes por otro lado.
-
-    Salida: diccionario u -> {v: capacidad residual}, solo con valores positivos.
-    """
+    """Construye la red residual del flujo actual, omitiendo capacidades cero."""
     residual = {}
     for vertice in vertices:
         residual[vertice] = {}
     for (u, v), capacidad in capacidades.items():
         disponible = capacidad - flujo[(u, v)]
         if disponible > 0:
-            residual[u][v] = disponible            # arco directo
+            residual[u][v] = disponible
         if flujo[(u, v)] > 0:
-            residual[v][u] = flujo[(u, v)]         # arco inverso
+            residual[v][u] = flujo[(u, v)]
     return residual
 
-
-# ---------------------------------------------------------------------------
-# Búsqueda de caminos aumentantes
-# ---------------------------------------------------------------------------
 
 def recorrer_en_anchura(residual, inicio):
     """
@@ -107,7 +76,7 @@ def recorrer_en_anchura(residual, inicio):
     while cola:
         actual = cola.popleft()
         for vecino in residual[actual]:
-            if vecino not in padre:              # todavía no descubierto
+            if vecino not in padre:
                 padre[vecino] = actual
                 cola.append(vecino)
     return padre
@@ -120,7 +89,7 @@ def reconstruir_camino(padre, destino):
     while vertice is not None:
         camino.append(vertice)
         vertice = padre[vertice]
-    camino.reverse()                              # se armó de atrás hacia adelante
+    camino.reverse()
     return camino
 
 
@@ -155,10 +124,6 @@ def buscar_camino_en_profundidad(residual, actual, destino, visitados=None):
                 return [actual] + resto
     return None
 
-
-# ---------------------------------------------------------------------------
-# Flujo máximo
-# ---------------------------------------------------------------------------
 
 def calcular_cuello_de_botella(residual, camino):
     """
@@ -205,32 +170,8 @@ def calcular_valor_del_flujo(flujo, origen):
     return valor
 
 
-def calcular_flujo_maximo(vertices, capacidades, origen, destino,
-                          estrategia=ESTRATEGIA_ANCHURA):
-    """
-    Calcula un flujo máximo de origen a destino.
-
-    Método de Ford–Fulkerson:
-      1. Empezar con flujo 0 en todas las rutas.
-      2. Construir la red residual del flujo actual.
-      3. Buscar en ella un camino aumentante de origen a destino.
-         Con BFS (estrategia "anchura") el método se llama Edmonds–Karp.
-      4. Si existe: calcular su cuello de botella, enviar esa cantidad por el
-         camino y volver al paso 2.
-      5. Si no existe: el flujo actual es máximo.
-
-    Entradas:
-      - vertices, capacidades, origen, destino: la red (solo rutas activas).
-      - estrategia: "anchura" (por defecto) o "profundidad" (solo comparación).
-
-    Salida: (flujo, pasos)
-      - flujo: diccionario (u, v) -> flujo final de cada ruta activa.
-      - pasos: lista con un diccionario por cada camino aumentante:
-          "camino"            lista de vértices en la red residual,
-          "cuello_de_botella" paquetes por hora añadidos en ese paso,
-          "arcos_inversos"    arcos residuales del camino que no son rutas originales,
-          "flujo_acumulado"   valor total del flujo después del paso.
-    """
+def calcular_flujo_maximo(vertices, capacidades, origen, destino, estrategia=ESTRATEGIA_ANCHURA):
+    """Calcula el flujo máximo y registra cada camino aumentante utilizado."""
     comprobar_red_admisible(vertices, capacidades, origen, destino)
 
     flujo = {}
@@ -246,7 +187,7 @@ def calcular_flujo_maximo(vertices, capacidades, origen, destino,
         else:
             camino = buscar_camino_en_profundidad(residual, origen, destino)
         if camino is None:
-            break                                  # sin camino aumentante: flujo máximo
+            break
 
         cuello = calcular_cuello_de_botella(residual, camino)
         aumentar_flujo(flujo, camino, cuello)
@@ -256,39 +197,19 @@ def calcular_flujo_maximo(vertices, capacidades, origen, destino,
         for arco in arcos_de_camino(camino):
             if arco not in capacidades:
                 arcos_inversos.append(arco)
-        pasos.append({
-            "camino": camino,
-            "cuello_de_botella": cuello,
-            "arcos_inversos": arcos_inversos,
-            "flujo_acumulado": flujo_acumulado,
-        })
+        pasos.append(
+            {
+                "camino": camino,
+                "cuello_de_botella": cuello,
+                "arcos_inversos": arcos_inversos,
+                "flujo_acumulado": flujo_acumulado,
+            }
+        )
     return flujo, pasos
 
 
-# ---------------------------------------------------------------------------
-# Corte mínimo
-# ---------------------------------------------------------------------------
-
 def encontrar_corte_minimo(vertices, capacidades, flujo, origen):
-    """
-    Identifica un corte mínimo a partir de un flujo máximo.
-
-    Se construye la red residual FINAL y se marcan los vértices alcanzables
-    desde el origen: forman el conjunto S. El resto forma el conjunto T. El
-    corte son las rutas originales activas que van de S a T.
-
-    ¿Por qué su capacidad coincide con el flujo máximo? Como ya no hay camino
-    aumentante, el destino queda en T. Toda ruta de S a T está saturada (si le
-    sobrara capacidad, su extremo final sería alcanzable) y ninguna ruta de T
-    a S lleva flujo (si llevara, su arco inverso haría alcanzable su origen).
-    Entonces todo el flujo cruza de S a T llenando exactamente esas rutas.
-
-    Salida: (lado_origen, lado_destino, arcos_del_corte, capacidad_del_corte)
-      - lado_origen:  lista de vértices de S (en el orden de `vertices`).
-      - lado_destino: lista de vértices de T.
-      - arcos_del_corte: lista de pares (u, v) con u en S y v en T.
-      - capacidad_del_corte: suma de las capacidades de esos arcos.
-    """
+    """Obtiene la partición y los arcos del corte mínimo desde la red residual."""
     residual = construir_red_residual(vertices, capacidades, flujo)
     alcanzables = recorrer_en_anchura(residual, origen)
 
@@ -309,14 +230,9 @@ def encontrar_corte_minimo(vertices, capacidades, flujo, origen):
     return lado_origen, lado_destino, arcos_del_corte, capacidad_del_corte
 
 
-# ---------------------------------------------------------------------------
-# Análisis completo de una red
-# ---------------------------------------------------------------------------
-
 def analizar_red_logistica(vertices, capacidades, origen, destino):
     """
     Calcula el flujo máximo y un corte mínimo, y reúne los resultados.
-
     Salida: diccionario con
       - "origen", "destino"
       - "capacidades": rutas activas y su capacidad

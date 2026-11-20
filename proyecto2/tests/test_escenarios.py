@@ -13,6 +13,7 @@ from test_algoritmos import corte_minimo_por_fuerza_bruta  # noqa: E402
 
 
 def cargar_red_inicial():
+    """Carga la red inicial compartida por los escenarios de prueba."""
     return grafo.cargar_red(verificacion.ARCHIVO_RED_INICIAL)
 
 
@@ -43,14 +44,17 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
             red = escenario["red"]
             flujo = escenario["resultado"]["flujo"]
             capacidades = grafo.capacidades_activas(red)
-            self.assertEqual(set(flujo), set(capacidades))    # un flujo por ruta activa
+            self.assertEqual(set(flujo), set(capacidades))
             for arco, capacidad in capacidades.items():
                 self.assertTrue(0 <= flujo[arco] <= capacidad, f"{escenario['nombre']} {arco}")
             balances = verificacion.calcular_balances(red["vertices"], flujo)
             for vertice in red["vertices"]:
                 if vertice not in ("O", "T"):
-                    self.assertEqual(balances[vertice]["entra"], balances[vertice]["sale"],
-                                     f"{escenario['nombre']} {vertice}")
+                    self.assertEqual(
+                        balances[vertice]["entra"],
+                        balances[vertice]["sale"],
+                        f"{escenario['nombre']} {vertice}",
+                    )
 
     def test_cortes_minimos_concretos(self):
         inicial, sin_ruta, con_mas_capacidad = [e["resultado"] for e in self.escenarios]
@@ -61,7 +65,6 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
         self.assertEqual(con_mas_capacidad["lado_origen"], ["O"])
 
     def test_el_corte_de_referencia_del_kit_tambien_vale_18(self):
-        # El corte mínimo no es único: el del kit es otro corte con la misma capacidad.
         capacidades = grafo.capacidades_activas(self.red_original)
         del_kit = [("F", "T"), ("G", "T"), ("H", "T"), ("I", "T")]
         self.assertEqual(sum(capacidades[arco] for arco in del_kit), 18)
@@ -73,12 +76,10 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
 
     def test_las_modificaciones_parten_de_la_red_original_sin_acumularse(self):
         inicial, sin_ruta, con_mas_capacidad = [e["red"] for e in self.escenarios]
-        self.assertEqual(self.red_original, cargar_red_inicial())      # el original no cambió
+        self.assertEqual(self.red_original, cargar_red_inicial())
         self.assertEqual(inicial, self.red_original)
-        # Modificación 1: solo H → T desactivada; I → T conserva su capacidad 5.
         self.assertEqual(grafo.arcos_desactivados(sin_ruta), [("H", "T")])
         self.assertEqual(grafo.capacidades_activas(sin_ruta)[("I", "T")], 5)
-        # Modificación 2: I → T vale 10 y H → T sigue activa.
         self.assertEqual(grafo.arcos_desactivados(con_mas_capacidad), [])
         self.assertEqual(grafo.capacidades_activas(con_mas_capacidad)[("I", "T")], 10)
         self.assertEqual(grafo.capacidades_activas(con_mas_capacidad)[("H", "T")], 8)
@@ -90,7 +91,6 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
         self.assertNotIn(("H", "T"), resultado["capacidades"])
 
     def test_flujo_maximo_igual_al_corte_minimo_por_fuerza_bruta(self):
-        # Comprobación independiente: se revisan las 512 particiones posibles.
         for escenario in self.escenarios:
             red = escenario["red"]
             minimo = corte_minimo_por_fuerza_bruta(
@@ -102,11 +102,16 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
         for escenario in self.escenarios:
             red = escenario["red"]
             con_dfs, _ = algoritmos.calcular_flujo_maximo(
-                red["vertices"], grafo.capacidades_activas(red), "O", "T",
+                red["vertices"],
+                grafo.capacidades_activas(red),
+                "O",
+                "T",
                 algoritmos.ESTRATEGIA_PROFUNDIDAD,
             )
-            self.assertEqual(algoritmos.calcular_valor_del_flujo(con_dfs, "O"),
-                             escenario["resultado"]["flujo_maximo"])
+            self.assertEqual(
+                algoritmos.calcular_valor_del_flujo(con_dfs, "O"),
+                escenario["resultado"]["flujo_maximo"],
+            )
 
     def test_condiciones_iniciales(self):
         condiciones = verificacion.comprobar_condiciones_iniciales(self.red_original)
@@ -116,6 +121,8 @@ class PruebasEscenariosDeReferencia(unittest.TestCase):
 
 
 class PruebasCasoManual(unittest.TestCase):
+    """Comprueba el caso pequeño resuelto manualmente."""
+
     def setUp(self):
         self.red = grafo.cargar_red(verificacion.ARCHIVO_CASO_MANUAL)
 
@@ -128,17 +135,29 @@ class PruebasCasoManual(unittest.TestCase):
         self.assertEqual(resultado["flujo_maximo"], 8)
         self.assertEqual(resultado["corte"], [("A", "T"), ("C", "T")])
         self.assertEqual(resultado["capacidad_corte"], 8)
-        self.assertTrue(verificacion.todo_cumple(
-            verificacion.verificar_resultado(self.red, resultado)))
+        self.assertTrue(
+            verificacion.todo_cumple(verificacion.verificar_resultado(self.red, resultado))
+        )
 
     def test_el_flujo_manual_del_kit_es_factible_y_tambien_vale_8(self):
-        # Flujo propuesto a mano: distinto del que halla el código, igual de óptimo.
-        flujo_manual = {("O", "A"): 5, ("O", "B"): 3, ("A", "C"): 2, ("A", "T"): 3,
-                        ("B", "C"): 3, ("C", "T"): 5}
+        flujo_manual = {
+            ("O", "A"): 5,
+            ("O", "B"): 3,
+            ("A", "C"): 2,
+            ("A", "T"): 3,
+            ("B", "C"): 3,
+            ("C", "T"): 5,
+        }
         capacidades = grafo.capacidades_activas(self.red)
-        self.assertEqual(verificacion.buscar_violaciones_de_capacidad(capacidades, flujo_manual), [])
-        self.assertEqual(verificacion.buscar_violaciones_de_conservacion(
-            self.red["vertices"], flujo_manual, "O", "T"), [])
+        self.assertEqual(
+            verificacion.buscar_violaciones_de_capacidad(capacidades, flujo_manual), []
+        )
+        self.assertEqual(
+            verificacion.buscar_violaciones_de_conservacion(
+                self.red["vertices"], flujo_manual, "O", "T"
+            ),
+            [],
+        )
         self.assertEqual(algoritmos.calcular_valor_del_flujo(flujo_manual, "O"), 8)
         flujo_codigo = algoritmos.analizar_red(self.red)["flujo"]
         self.assertNotEqual(flujo_manual, flujo_codigo)
@@ -146,6 +165,8 @@ class PruebasCasoManual(unittest.TestCase):
 
 
 class PruebasModificacionesYExtremos(unittest.TestCase):
+    """Comprueba cambios de rutas, capacidades y extremos del flujo."""
+
     def test_desactivar_y_reactivar_recupera_el_flujo_original(self):
         red = cargar_red_inicial()
         grafo.desactivar_arco(red, "H", "T")
@@ -170,12 +191,12 @@ class PruebasModificacionesYExtremos(unittest.TestCase):
         grafo.cambiar_extremos(red, "A", "T")
         resultado = algoritmos.analizar_red(red)
         self.assertEqual(resultado["origen"], "A")
-        self.assertEqual(resultado["flujo_maximo"], 9)             # A → D (6) + A → E (3)
+        self.assertEqual(resultado["flujo_maximo"], 9)
         self.assertEqual(resultado["corte"], [("A", "D"), ("A", "E")])
 
     def test_extremos_sin_conexion(self):
         red = cargar_red_inicial()
-        grafo.cambiar_extremos(red, "T", "O")                      # contra el sentido de las rutas
+        grafo.cambiar_extremos(red, "T", "O")
         resultado = algoritmos.analizar_red(red)
         self.assertEqual(resultado["flujo_maximo"], 0)
         self.assertEqual(resultado["corte"], [])

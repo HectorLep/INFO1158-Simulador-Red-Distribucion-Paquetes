@@ -1,19 +1,7 @@
-"""
-Verificación de resultados y escenarios de comparación (Proyecto 2).
+"""Validación de resultados, escenarios e informe de consola.
 
-Este archivo NO calcula el flujo: revisa que lo que devolvió algoritmos.py
-cumple las condiciones matemáticas del enunciado:
-
-  - capacidad:     0 ≤ x(u, v) ≤ c(u, v) en cada ruta activa;
-  - conservación:  en cada centro intermedio entra lo mismo que sale;
-  - valor:         |x| = flujo neto que sale del origen;
-  - corte mínimo:  partición S/T válida, rutas de S a T saturadas y
-                   flujo máximo = capacidad del corte.
-
-También arma los tres escenarios que pide el enunciado (red inicial y dos
-modificaciones independientes) y permite imprimir un informe de consola:
-
-    python proyecto2/verificacion.py
+Este módulo comprueba capacidades, conservación, valor del flujo y corte
+mínimo. También prepara los escenarios de comparación de la aplicación.
 """
 
 from pathlib import Path
@@ -39,10 +27,6 @@ def texto_camino(camino):
     """Escribe un camino para personas: ['O','A','T'] -> 'O → A → T'."""
     return " → ".join(camino)
 
-
-# ---------------------------------------------------------------------------
-# Comprobaciones individuales
-# ---------------------------------------------------------------------------
 
 def buscar_violaciones_de_capacidad(capacidades, flujo):
     """
@@ -82,7 +66,7 @@ def buscar_violaciones_de_conservacion(vertices, flujo, origen, destino):
     violaciones = []
     for vertice in vertices:
         if vertice in (origen, destino):
-            continue                    # origen y destino no conservan: emiten y reciben
+            continue
         if balances[vertice]["entra"] != balances[vertice]["sale"]:
             violaciones.append(vertice)
     return violaciones
@@ -99,9 +83,7 @@ def contar_caminos_simples(adyacencia, actual, destino, visitados):
     cantidad = 0
     for vecino in adyacencia[actual]:
         if vecino not in visitados:
-            cantidad += contar_caminos_simples(
-                adyacencia, vecino, destino, visitados | {vecino}
-            )
+            cantidad += contar_caminos_simples(adyacencia, vecino, destino, visitados | {vecino})
     return cantidad
 
 
@@ -115,17 +97,8 @@ def construir_adyacencia(vertices, capacidades):
     return adyacencia
 
 
-# ---------------------------------------------------------------------------
-# Verificación completa de un resultado
-# ---------------------------------------------------------------------------
-
 def verificar_resultado(red, resultado):
-    """
-    Revisa el resultado de analizar_red(red).
-
-    Salida: lista de diccionarios {"comprobacion", "cumple", "detalle"}; el
-    resultado es confiable solo si todos tienen "cumple" igual a True.
-    """
+    """Comprueba que el resultado contiene un flujo y un corte válidos."""
     vertices = red["vertices"]
     capacidades = capacidades_activas(red)
     origen = red["origen"]
@@ -137,70 +110,81 @@ def verificar_resultado(red, resultado):
     comprobaciones = []
 
     def anotar(comprobacion, cumple, detalle):
-        comprobaciones.append(
-            {"comprobacion": comprobacion, "cumple": cumple, "detalle": detalle}
-        )
+        """Añade una comprobación con su estado y explicación."""
+        comprobaciones.append({"comprobacion": comprobacion, "cumple": cumple, "detalle": detalle})
 
-    # 1. Restricciones de capacidad
     fuera_de_rango = buscar_violaciones_de_capacidad(capacidades, flujo)
     if fuera_de_rango:
         detalle = "No cumplen: " + ", ".join(texto_arco(u, v) for u, v in fuera_de_rango)
     else:
         detalle = f"{len(capacidades)} rutas activas revisadas"
-    anotar("Capacidad: 0 ≤ flujo ≤ capacidad en cada ruta activa",
-           fuera_de_rango == [] and set(flujo) == set(capacidades), detalle)
+    anotar(
+        "Capacidad: 0 ≤ flujo ≤ capacidad en cada ruta activa",
+        fuera_de_rango == [] and set(flujo) == set(capacidades),
+        detalle,
+    )
 
-    # 2. Conservación del flujo
     sin_conservar = buscar_violaciones_de_conservacion(vertices, flujo, origen, destino)
     if sin_conservar:
         detalle = "No se conserva en: " + ", ".join(sin_conservar)
     else:
         detalle = f"{len(vertices) - 2} centros intermedios revisados"
-    anotar("Conservación: en cada centro intermedio entra lo mismo que sale",
-           sin_conservar == [], detalle)
+    anotar(
+        "Conservación: en cada centro intermedio entra lo mismo que sale",
+        sin_conservar == [],
+        detalle,
+    )
 
-    # 3 y 4. Valor del flujo
     balances = calcular_balances(vertices, flujo)
     neto_origen = balances[origen]["sale"] - balances[origen]["entra"]
     neto_destino = balances[destino]["entra"] - balances[destino]["sale"]
-    anotar("Valor del flujo = flujo neto que sale del origen",
-           resultado["flujo_maximo"] == neto_origen,
-           f"sale {balances[origen]['sale']} − entra {balances[origen]['entra']} = {neto_origen}")
-    anotar("El mismo valor llega, neto, al destino",
-           resultado["flujo_maximo"] == neto_destino,
-           f"entra {balances[destino]['entra']} − sale {balances[destino]['sale']} = {neto_destino}")
+    anotar(
+        "Valor del flujo = flujo neto que sale del origen",
+        resultado["flujo_maximo"] == neto_origen,
+        f"sale {balances[origen]['sale']} − entra {balances[origen]['entra']} = {neto_origen}",
+    )
+    anotar(
+        "El mismo valor llega, neto, al destino",
+        resultado["flujo_maximo"] == neto_destino,
+        f"entra {balances[destino]['entra']} − "
+        f"sale {balances[destino]['sale']} = {neto_destino}",
+    )
 
-    # 5. La partición S / T es válida
     particion_valida = (
         origen in lado_origen
         and destino in lado_destino
         and len(lado_origen) + len(lado_destino) == len(vertices)
         and set(lado_origen) | set(lado_destino) == set(vertices)
     )
-    anotar("Partición: origen en S, destino en T, cada centro en un solo lado",
-           particion_valida,
-           f"|S| = {len(lado_origen)}, |T| = {len(lado_destino)}")
+    anotar(
+        "Partición: origen en S, destino en T, cada centro en un solo lado",
+        particion_valida,
+        f"|S| = {len(lado_origen)}, |T| = {len(lado_destino)}",
+    )
 
-    # 6. Rutas que cruzan el corte
     cruces_correctos = True
     for (u, v), capacidad in capacidades.items():
         va_de_s_a_t = u in lado_origen and v in lado_destino
         va_de_t_a_s = u in lado_destino and v in lado_origen
         if va_de_s_a_t != ((u, v) in corte):
-            cruces_correctos = False            # el corte debe ser exactamente S → T
+            cruces_correctos = False
         if va_de_s_a_t and flujo[(u, v)] != capacidad:
-            cruces_correctos = False            # toda ruta del corte está saturada
+            cruces_correctos = False
         if va_de_t_a_s and flujo[(u, v)] != 0:
-            cruces_correctos = False            # nada vuelve de T a S
-    anotar("Corte: sus rutas van de S a T y están saturadas; de T a S no vuelve flujo",
-           cruces_correctos, f"{len(corte)} ruta(s) en el corte")
+            cruces_correctos = False
+    anotar(
+        "Corte: sus rutas van de S a T y están saturadas; de T a S no vuelve flujo",
+        cruces_correctos,
+        f"{len(corte)} ruta(s) en el corte",
+    )
 
-    # 7. Teorema de flujo máximo – corte mínimo
     suma = " + ".join(str(capacidades[arco]) for arco in corte) or "0"
     capacidad_corte = sum(capacidades[arco] for arco in corte)
-    anotar("Flujo máximo = capacidad del corte mínimo",
-           resultado["flujo_maximo"] == capacidad_corte == resultado["capacidad_corte"],
-           f"{resultado['flujo_maximo']} = {suma} = {capacidad_corte}")
+    anotar(
+        "Flujo máximo = capacidad del corte mínimo",
+        resultado["flujo_maximo"] == capacidad_corte == resultado["capacidad_corte"],
+        f"{resultado['flujo_maximo']} = {suma} = {capacidad_corte}",
+    )
     return comprobaciones
 
 
@@ -213,18 +197,12 @@ def todo_cumple(comprobaciones):
 
 
 def comprobar_condiciones_iniciales(red):
-    """
-    Revisa las condiciones que el enunciado pide a la configuración INICIAL.
-
-    Salida: lista de diccionarios {"comprobacion", "cumple", "detalle"}.
-    """
+    """Comprueba tamaño, estructura, capacidades y caminos de la red inicial."""
     problemas_tamano = validar_tamano_inicial(red)
     problemas_estructura = validar_estructura(red)
     capacidades = capacidades_activas(red)
     adyacencia = construir_adyacencia(red["vertices"], capacidades)
-    caminos = contar_caminos_simples(
-        adyacencia, red["origen"], red["destino"], {red["origen"]}
-    )
+    caminos = contar_caminos_simples(adyacencia, red["origen"], red["destino"], {red["origen"]})
     return [
         {
             "comprobacion": "10 ≤ |V| ≤ 12, 15 ≤ |E| ≤ 20 y ningún vértice aislado",
@@ -234,7 +212,9 @@ def comprobar_condiciones_iniciales(red):
         {
             "comprobacion": "Sin lazos, arcos repetidos ni recíprocos; origen ≠ destino",
             "cumple": not any("capacidad" not in problema for problema in problemas_estructura),
-            "detalle": "Sin problemas" if not problemas_estructura else "; ".join(problemas_estructura),
+            "detalle": (
+                "Sin problemas" if not problemas_estructura else "; ".join(problemas_estructura)
+            ),
         },
         {
             "comprobacion": "Capacidades enteras entre 1 y 12 paquetes por hora",
@@ -249,16 +229,8 @@ def comprobar_condiciones_iniciales(red):
     ]
 
 
-# ---------------------------------------------------------------------------
-# Escenarios de comparación
-# ---------------------------------------------------------------------------
-
 def construir_escenarios(red_original):
-    """
-    Devuelve las tres configuraciones que se comparan, con el mismo origen y
-    destino. Cada modificación se aplica sobre una COPIA de la red original,
-    de modo que los cambios no se acumulan entre escenarios.
-    """
+    """Crea la red inicial y dos copias con modificaciones independientes."""
     sin_ruta = copiar_red(red_original)
     desactivar_arco(sin_ruta, "H", "T")
 
@@ -268,18 +240,16 @@ def construir_escenarios(red_original):
     return [
         {"nombre": "Red inicial", "cambio": "Ninguno", "red": copiar_red(red_original)},
         {"nombre": "Modificación 1", "cambio": "Desactivar H → T", "red": sin_ruta},
-        {"nombre": "Modificación 2", "cambio": "Capacidad de I → T: 5 → 10",
-         "red": con_mas_capacidad},
+        {
+            "nombre": "Modificación 2",
+            "cambio": "Capacidad de I → T: 5 → 10",
+            "red": con_mas_capacidad,
+        },
     ]
 
 
 def comparar_escenarios(red_original):
-    """
-    Analiza y verifica cada escenario.
-
-    Salida: lista de diccionarios con "nombre", "cambio", "red", "resultado"
-    y "comprobaciones" (una entrada por escenario).
-    """
+    """Analiza y verifica todos los escenarios generados."""
     comparacion = []
     for escenario in construir_escenarios(red_original):
         resultado = analizar_red(escenario["red"])
@@ -289,11 +259,8 @@ def comparar_escenarios(red_original):
     return comparacion
 
 
-# ---------------------------------------------------------------------------
-# Informe de consola (evidencia reproducible para el informe técnico)
-# ---------------------------------------------------------------------------
-
 def imprimir_comprobaciones(comprobaciones):
+    """Imprime una lista de comprobaciones con una marca de estado."""
     for comprobacion in comprobaciones:
         marca = "OK   " if comprobacion["cumple"] else "FALLA"
         print(f"  [{marca}] {comprobacion['comprobacion']} ({comprobacion['detalle']})")
@@ -304,8 +271,10 @@ def imprimir_resultado(titulo, red):
     resultado = analizar_red(red)
     capacidades = resultado["capacidades"]
     print(f"\n=== {titulo} ===")
-    print(f"Origen: {red['origen']}   Destino: {red['destino']}   "
-          f"Rutas activas: {len(capacidades)}")
+    print(
+        f"Origen: {red['origen']}   Destino: {red['destino']}   "
+        f"Rutas activas: {len(capacidades)}"
+    )
     print(f"FLUJO MÁXIMO: {resultado['flujo_maximo']} paquetes por hora")
     print("Flujo / capacidad por ruta:")
     for (u, v), capacidad in capacidades.items():
@@ -314,16 +283,22 @@ def imprimir_resultado(titulo, red):
     for numero, paso in enumerate(resultado["pasos"], start=1):
         inversos = ""
         if paso["arcos_inversos"]:
-            inversos = "  [usa arco inverso: " + ", ".join(
-                texto_arco(u, v) for u, v in paso["arcos_inversos"]) + "]"
-        print(f"  {numero}. {texto_camino(paso['camino'])}  "
-              f"cuello de botella {paso['cuello_de_botella']}  "
-              f"acumulado {paso['flujo_acumulado']}{inversos}")
+            inversos = (
+                "  [usa arco inverso: "
+                + ", ".join(texto_arco(u, v) for u, v in paso["arcos_inversos"])
+                + "]"
+            )
+        print(
+            f"  {numero}. {texto_camino(paso['camino'])}  "
+            f"cuello de botella {paso['cuello_de_botella']}  "
+            f"acumulado {paso['flujo_acumulado']}{inversos}"
+        )
     print(f"S = {{{', '.join(resultado['lado_origen'])}}}")
     print(f"T = {{{', '.join(resultado['lado_destino'])}}}")
     if resultado["corte"]:
-        rutas = ", ".join(f"{texto_arco(u, v)}({capacidades[(u, v)]})"
-                          for u, v in resultado["corte"])
+        rutas = ", ".join(
+            f"{texto_arco(u, v)}({capacidades[(u, v)]})" for u, v in resultado["corte"]
+        )
         print(f"Corte mínimo: {{{rutas}}}  capacidad = {resultado['capacidad_corte']}")
     else:
         print("Corte mínimo: ∅ (ninguna ruta va de S a T), capacidad = 0")
@@ -343,6 +318,5 @@ def imprimir_informe():
 if __name__ == "__main__":
     import sys
 
-    # La consola de Windows no siempre usa UTF-8; así se imprimen bien "→" y "∅".
     sys.stdout.reconfigure(encoding="utf-8")
     imprimir_informe()

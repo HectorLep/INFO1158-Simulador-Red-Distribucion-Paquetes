@@ -51,7 +51,7 @@ una carpeta de ruta corta (por ejemplo `C:\Proyectos`) y repetir el paso 2.
 .\.venv\Scripts\python.exe -m unittest discover -s proyecto2/tests -v
 ```
 
-Resultado esperado: `Ran 81 tests` y `OK`. Las 11 pruebas de `test_interfaz.py` accionan
+Resultado esperado: `Ran 83 tests` y `OK`. Las pruebas de `test_interfaz.py` accionan
 los controles de la aplicación sin abrir un navegador.
 
 Informe de consola con las tres configuraciones analizadas y el caso manual:
@@ -75,11 +75,21 @@ Informe de consola con las tres configuraciones analizadas y el caso manual:
 
 ## Regenerar el informe en PDF (opcional)
 
-Requiere Microsoft Edge o Google Chrome y el paquete `markdown`:
+Requiere Microsoft Edge o Google Chrome. `markdown` ya está incluido en
+`proyecto2/requirements.txt`:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install markdown
+.\.venv\Scripts\python.exe -m pip install -r proyecto2/requirements.txt
 .\.venv\Scripts\python.exe herramientas/generar_informe_pdf.py
+```
+
+## Comprobación de estilo
+
+La configuración de Black y Ruff está en `pyproject.toml`:
+
+```powershell
+python -m black proyecto2 herramientas
+python -m ruff check proyecto2 herramientas
 ```
 
 ## Tecnología

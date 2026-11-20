@@ -1,10 +1,11 @@
 """Pruebas del modelo de la red: validaciones y modificaciones (Proyecto 2)."""
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
-# Permite importar grafo.py y algoritmos.py, que están en la carpeta superior.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import grafo  # noqa: E402
@@ -13,10 +14,13 @@ CARPETA_DATOS = Path(__file__).resolve().parent.parent / "datos"
 
 
 def cargar_red_inicial():
+    """Carga la red de referencia usada por las pruebas del modelo."""
     return grafo.cargar_red(CARPETA_DATOS / "red_inicial.json")
 
 
 class PruebasConfiguracionInicial(unittest.TestCase):
+    """Comprueba la estructura y los datos de la configuración inicial."""
+
     def test_red_inicial_cumple_tamanos_del_enunciado(self):
         red = cargar_red_inicial()
         self.assertEqual(len(red["vertices"]), 11)
@@ -36,17 +40,33 @@ class PruebasConfiguracionInicial(unittest.TestCase):
 
     def test_red_inicial_coincide_con_la_referencia_del_kit(self):
         esperadas = {
-            ("O", "A"): 8, ("O", "B"): 7, ("O", "C"): 5, ("A", "D"): 6, ("A", "E"): 3,
-            ("B", "E"): 6, ("B", "F"): 4, ("C", "F"): 5, ("C", "G"): 3, ("D", "H"): 6,
-            ("D", "I"): 2, ("E", "H"): 5, ("E", "I"): 4, ("F", "I"): 6, ("F", "T"): 2,
-            ("G", "T"): 3, ("H", "T"): 8, ("I", "T"): 5,
+            ("O", "A"): 8,
+            ("O", "B"): 7,
+            ("O", "C"): 5,
+            ("A", "D"): 6,
+            ("A", "E"): 3,
+            ("B", "E"): 6,
+            ("B", "F"): 4,
+            ("C", "F"): 5,
+            ("C", "G"): 3,
+            ("D", "H"): 6,
+            ("D", "I"): 2,
+            ("E", "H"): 5,
+            ("E", "I"): 4,
+            ("F", "I"): 6,
+            ("F", "T"): 2,
+            ("G", "T"): 3,
+            ("H", "T"): 8,
+            ("I", "T"): 5,
         }
         self.assertEqual(grafo.capacidades_activas(cargar_red_inicial()), esperadas)
 
     def test_los_datos_coinciden_con_los_json_de_referencia_del_kit(self):
         carpeta_kit = CARPETA_DATOS.parent.parent / "datos_referencia"
-        pares = [("red_inicial.json", "p2_red_inicial.json"),
-                 ("caso_manual.json", "p2_verificacion_manual.json")]
+        pares = [
+            ("red_inicial.json", "p2_red_inicial.json"),
+            ("caso_manual.json", "p2_verificacion_manual.json"),
+        ]
         for propio, del_kit in pares:
             if not (carpeta_kit / del_kit).exists():
                 self.skipTest("No se encontró la carpeta datos_referencia del kit")
@@ -54,8 +74,9 @@ class PruebasConfiguracionInicial(unittest.TestCase):
             referencia = grafo.cargar_red(carpeta_kit / del_kit)
             self.assertEqual(red["vertices"], referencia["vertices"])
             self.assertEqual(red["arcos"], referencia["arcos"])
-            self.assertEqual((red["origen"], red["destino"]),
-                             (referencia["origen"], referencia["destino"]))
+            self.assertEqual(
+                (red["origen"], red["destino"]), (referencia["origen"], referencia["destino"])
+            )
 
     def test_todos_los_vertices_tienen_posicion_y_significado(self):
         red = cargar_red_inicial()
@@ -65,12 +86,14 @@ class PruebasConfiguracionInicial(unittest.TestCase):
 
     def test_validaciones_detectan_redes_incorrectas(self):
         red = cargar_red_inicial()
-        red["vertices"].append("Z")                        # vértice aislado
+        red["vertices"].append("Z")
         self.assertEqual(grafo.buscar_vertices_aislados(red), ["Z"])
         self.assertTrue(grafo.validar_tamano_inicial(red))
 
         pequena = {
-            "vertices": ["O", "T"], "origen": "O", "destino": "O",
+            "vertices": ["O", "T"],
+            "origen": "O",
+            "destino": "O",
             "arcos": [
                 {"origen": "O", "destino": "T", "capacidad": 5, "activo": True},
                 {"origen": "T", "destino": "O", "capacidad": 5, "activo": True},
@@ -83,8 +106,24 @@ class PruebasConfiguracionInicial(unittest.TestCase):
             self.assertIn(palabra, problemas)
         self.assertEqual(len(grafo.validar_tamano_inicial(pequena)), 2)
 
+    def test_cargar_red_rechaza_json_invalido(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = Path(carpeta) / "red_invalida.json"
+            ruta.write_text("{red incompleta", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "JSON válido"):
+                grafo.cargar_red(ruta)
+
+    def test_cargar_red_rechaza_red_sin_claves_obligatorias(self):
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = Path(carpeta) / "red_incompleta.json"
+            ruta.write_text(json.dumps({"vertices": ["O", "T"]}), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Faltan claves"):
+                grafo.cargar_red(ruta)
+
 
 class PruebasAgregarConexion(unittest.TestCase):
+    """Comprueba las reglas para agregar conexiones a la red."""
+
     def setUp(self):
         self.red = cargar_red_inicial()
 
@@ -109,7 +148,6 @@ class PruebasAgregarConexion(unittest.TestCase):
         self.assert_rechaza("O", "Z", 5, "centros de la red")
 
     def test_rechaza_repetida_y_reciproca_de_una_ruta_desactivada(self):
-        # Una ruta desactivada sigue existiendo: puede reactivarse.
         grafo.desactivar_arco(self.red, "H", "T")
         self.assert_rechaza("H", "T", 5, "repetidos")
         self.assert_rechaza("T", "H", 5, "recíprocos")
@@ -134,6 +172,8 @@ class PruebasAgregarConexion(unittest.TestCase):
 
 
 class PruebasDesactivarYCambiarCapacidad(unittest.TestCase):
+    """Comprueba la activación, desactivación y capacidad de las rutas."""
+
     def setUp(self):
         self.red = cargar_red_inicial()
 
@@ -151,14 +191,14 @@ class PruebasDesactivarYCambiarCapacidad(unittest.TestCase):
 
     def test_errores_de_desactivacion(self):
         with self.assertRaises(ValueError):
-            grafo.desactivar_arco(self.red, "O", "T")        # no existe
+            grafo.desactivar_arco(self.red, "O", "T")
         grafo.desactivar_arco(self.red, "H", "T")
         with self.assertRaises(ValueError):
-            grafo.desactivar_arco(self.red, "H", "T")        # ya desactivada
+            grafo.desactivar_arco(self.red, "H", "T")
         with self.assertRaises(ValueError):
-            grafo.reactivar_arco(self.red, "O", "A")         # no estaba desactivada
+            grafo.reactivar_arco(self.red, "O", "A")
         with self.assertRaises(ValueError):
-            grafo.reactivar_arco(self.red, "O", "T")         # no existe
+            grafo.reactivar_arco(self.red, "O", "T")
 
     def test_cambiar_capacidad_valida(self):
         grafo.cambiar_capacidad(self.red, "I", "T", 10)
@@ -168,12 +208,14 @@ class PruebasDesactivarYCambiarCapacidad(unittest.TestCase):
         for capacidad in [0, 13, -1, 4.5, "10", True]:
             with self.assertRaises(ValueError):
                 grafo.cambiar_capacidad(self.red, "I", "T", capacidad)
-        self.assertEqual(grafo.capacidades_activas(self.red)[("I", "T")], 5)   # sin cambios
+        self.assertEqual(grafo.capacidades_activas(self.red)[("I", "T")], 5)
         with self.assertRaises(ValueError):
-            grafo.cambiar_capacidad(self.red, "O", "T", 5)   # la ruta no existe
+            grafo.cambiar_capacidad(self.red, "O", "T", 5)
 
 
 class PruebasExtremosYCopias(unittest.TestCase):
+    """Comprueba los extremos del flujo y la independencia de las copias."""
+
     def test_cambiar_origen_y_destino(self):
         red = cargar_red_inicial()
         grafo.cambiar_extremos(red, "A", "I")

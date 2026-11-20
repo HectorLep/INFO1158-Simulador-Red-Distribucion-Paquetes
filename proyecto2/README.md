@@ -53,10 +53,17 @@ PowerShell.
 .\.venv\Scripts\python.exe -m unittest discover -s proyecto2/tests -v
 ```
 
-- 70 pruebas del modelo, los algoritmos y los escenarios: solo necesitan la biblioteca
+- 72 pruebas del modelo, los algoritmos y los escenarios: solo necesitan la biblioteca
   estándar (también funcionan con `python -m unittest discover -s proyecto2/tests -v`).
 - 11 pruebas de interfaz (`test_interfaz.py`): accionan los controles de la aplicación sin
   navegador; necesitan Streamlit y se omiten automáticamente si no está instalado.
+
+Para revisar formato e imports desde la raíz:
+
+```powershell
+python -m black proyecto2 herramientas
+python -m ruff check proyecto2 herramientas
+```
 
 Informe de consola con los tres escenarios y el caso manual (evidencia reproducible):
 
